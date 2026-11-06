@@ -431,6 +431,32 @@ pub fn ingress_upsert(doc: &mut TunnelConfigDoc, hostname: &str, service: &str) 
     set_rules(doc, rules);
 }
 
+fn is_host_rule(rule: &Value, hostname: &str) -> bool {
+    rule.get("hostname").and_then(Value::as_str) == Some(hostname) && rule.get("path").is_none()
+}
+
+pub fn ingress_no_tls_verify(doc: &TunnelConfigDoc, hostname: &str) -> bool {
+    ingress_rules(doc)
+        .iter()
+        .find(|r| is_host_rule(r, hostname))
+        .and_then(|r| r.get("originRequest")?.get("noTLSVerify")?.as_bool())
+        .unwrap_or(false)
+}
+
+/// Lets cloudflared accept a self signed certificate from the local app. This
+/// only affects the hop inside the machine. Visitors still get Cloudflare's
+/// certificate.
+pub fn ingress_set_no_tls_verify(doc: &mut TunnelConfigDoc, hostname: &str) {
+    let mut rules = ingress_rules(doc);
+    if let Some(rule) = rules.iter_mut().find(|r| is_host_rule(r, hostname)) {
+        if !rule.get("originRequest").is_some_and(Value::is_object) {
+            rule["originRequest"] = json!({});
+        }
+        rule["originRequest"]["noTLSVerify"] = json!(true);
+    }
+    set_rules(doc, rules);
+}
+
 pub fn ingress_remove(doc: &mut TunnelConfigDoc, hostname: &str) {
     let mut rules = ingress_rules(doc);
     rules.retain(|r| !(r.get("hostname").and_then(Value::as_str) == Some(hostname) && r.get("path").is_none()));
@@ -499,6 +525,18 @@ mod tests {
         let rules = ingress_rules(&d);
         assert_eq!(rules.len(), 2);
         assert_eq!(rules[0]["hostname"], "b.x.com");
+    }
+
+    #[test]
+    fn no_tls_verify_keeps_other_origin_settings() {
+        let mut d = doc(json!({"ingress": [
+            {"hostname": "a.x.com", "service": "https://localhost:1", "originRequest": {"connectTimeout": 5}},
+            {"service": "http_status:404"}
+        ]}));
+        assert!(!ingress_no_tls_verify(&d, "a.x.com"));
+        ingress_set_no_tls_verify(&mut d, "a.x.com");
+        assert!(ingress_no_tls_verify(&d, "a.x.com"));
+        assert_eq!(ingress_rules(&d)[0]["originRequest"]["connectTimeout"], 5);
     }
 
     #[test]

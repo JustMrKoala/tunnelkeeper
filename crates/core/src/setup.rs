@@ -6,7 +6,7 @@ use std::time::Instant;
 use serde::{Deserialize, Serialize};
 
 use crate::Keeper;
-use crate::cloudflare::{Client, DnsRecord, Probe, Tunnel, Zone, ingress_service, ingress_upsert};
+use crate::cloudflare::{Client, DnsRecord, Probe, Tunnel, Zone, ingress_no_tls_verify, ingress_service, ingress_set_no_tls_verify, ingress_upsert};
 use crate::config::{RouteConfig, TunnelConfig, normalize_hostname, normalize_service, validate_tunnel_name};
 use crate::error::{Error, Result};
 use crate::health::{OriginProbe, ReadyProbe, TunnelStatus};
@@ -19,6 +19,9 @@ use crate::util::sha256_file;
 pub struct RouteRequest {
     pub hostname: String,
     pub service: String,
+    /// Accept a self signed certificate from the local app.
+    #[serde(default)]
+    pub no_tls_verify: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -263,7 +266,11 @@ impl Keeper {
         validate_tunnel_name(&req.tunnel)?;
         let mut routes = Vec::new();
         for r in &req.routes {
-            routes.push(RouteRequest { hostname: normalize_hostname(&r.hostname)?, service: normalize_service(&r.service)? });
+            routes.push(RouteRequest {
+                hostname: normalize_hostname(&r.hostname)?,
+                service: normalize_service(&r.service)?,
+                no_tls_verify: r.no_tls_verify,
+            });
         }
 
         let mut source = None;
@@ -470,7 +477,8 @@ impl Keeper {
         let is_ingress = |r: &Resource| matches!(r, Resource::Ingress { hostname, .. } if hostname == host);
         let mut doc = client.get_config(account_id, tunnel_id)?;
         let current = ingress_service(&doc, host);
-        if current.as_deref() == Some(route.service.as_str()) {
+        let tls_ok = !route.no_tls_verify || ingress_no_tls_verify(&doc, host);
+        if current.as_deref() == Some(route.service.as_str()) && tls_ok {
             let resource = Resource::Ingress { account_id: account_id.into(), tunnel_id: tunnel_id.into(), hostname: host.clone(), previous: None };
             if j.claim_unknown(is_ingress, resource)? {
                 emit(StepReport::changed(format!("ingress rule for {host} was applied by the earlier attempt")));
@@ -480,6 +488,9 @@ impl Keeper {
         } else {
             j.drop_unknown(is_ingress)?;
             ingress_upsert(&mut doc, host, &route.service);
+            if route.no_tls_verify {
+                ingress_set_no_tls_verify(&mut doc, host);
+            }
             let resource = Resource::Ingress {
                 account_id: account_id.into(),
                 tunnel_id: tunnel_id.into(),

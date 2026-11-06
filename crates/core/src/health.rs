@@ -141,7 +141,9 @@ impl Probes for RealProbes {
         // Any HTTP reply counts, even a 500, because the app is up.
         match http_exchange(&mut stream, "HEAD", "/", &host) {
             Ok(_) => OriginProbe::Responding,
-            Err(e) => OriginProbe::NotResponding(format!("{host}:{port} accepted the connection but gave no HTTP reply: {e}")),
+            Err(e) => OriginProbe::NotResponding(format!(
+                "{host}:{port} accepted the connection but gave no HTTP reply: {e}. If this port uses HTTPS, set the route to https://{host}:{port}"
+            )),
         }
     }
 

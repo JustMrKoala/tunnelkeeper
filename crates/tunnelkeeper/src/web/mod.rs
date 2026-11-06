@@ -354,6 +354,8 @@ struct AddRoute {
     tunnel: String,
     hostname: String,
     target: String,
+    #[serde(default)]
+    no_tls_verify: bool,
 }
 
 #[derive(Deserialize)]
@@ -440,7 +442,7 @@ fn route_post(state: &Arc<State>, path: &str, body: &[u8]) -> Reply {
             let title = format!("Adding route {}", add.hostname);
             let request = SetupRequest {
                 tunnel: add.tunnel,
-                routes: vec![RouteRequest { hostname: add.hostname, service: add.target }],
+                routes: vec![RouteRequest { hostname: add.hostname, service: add.target, no_tls_verify: add.no_tls_verify }],
                 install_service: false,
                 zone: None,
                 replace_dns: vec![],

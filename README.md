@@ -95,6 +95,7 @@ tunnelkeeper auth check --zone example.com
 | `tunnel list [--zone Z]` | Lists tunnels on the account |
 | `tunnel delete NAME` | Deletes a tunnel, its service and its DNS records |
 | `route add HOST PORT_OR_URL` | Adds or updates a route and its DNS record |
+| `route add HOST https://localhost:PORT --no-tls-verify` | Route to a local HTTPS app with a self signed certificate |
 | `route list`, `route remove HOST` | List or remove routes |
 | `service install`, `start`, `stop`, `uninstall` | Control the local service |
 | `status` | Health, service state and routes |
@@ -185,6 +186,9 @@ Start with `tunnelkeeper doctor`, which checks the items below and gives a fix f
 | `TunnelDown` | Port 7844 blocked | Allow outbound 7844 on TCP and UDP |
 | Service keeps restarting, log says `Failed to get tunnel` | Tunnel token is invalid, or the tunnel was deleted | `tunnelkeeper service install`, or run setup again |
 | `OriginDown` | Your app is not running on that port | Start it, and check the port in `route list` |
+| `OriginDown`, but the app opens fine in a browser over `https://` | A plain port number means `http://`, and this app uses HTTPS | `tunnelkeeper route add HOST https://localhost:PORT` |
+| Public site shows 502 for a local HTTPS app | The app has a self signed certificate | Add `--no-tls-verify` to `route add`. This only affects the hop inside your machine |
+| `OriginDown` for an app bound to one address | The app does not listen on `localhost` | Use that address in the URL, such as `http://192.168.1.10:3000` |
 | Browser shows a certificate error on `a.b.example.com` | Universal SSL covers one subdomain level in a full setup zone | Use a first level hostname, or add Total TLS |
 | `does not point at this tunnel` | The hostname already has a DNS record | Review it, then approve the replacement |
 | Tunnel will not delete | Cloudflare tracks connections for several minutes | tunnelkeeper retries for a few minutes. Run the delete again if it stops |

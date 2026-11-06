@@ -110,6 +110,9 @@ struct SetupArgs {
     /// Zone used to find the account when no route is given
     #[arg(long)]
     zone: Option<String>,
+    /// Accept self signed certificates from local https:// apps
+    #[arg(long)]
+    no_tls_verify: bool,
     /// Skip installing the service
     #[arg(long)]
     no_service: bool,
@@ -190,6 +193,9 @@ enum RouteCommand {
         target: String,
         #[arg(long)]
         tunnel: Option<String>,
+        /// Accept a self signed certificate from a local https:// app
+        #[arg(long)]
+        no_tls_verify: bool,
     },
     List {
         #[arg(long)]
@@ -330,11 +336,11 @@ fn offer_cloudflared(keeper: &Keeper) -> Result<()> {
     Ok(())
 }
 
-fn parse_route(text: &str) -> Result<RouteRequest> {
+fn parse_route(text: &str, no_tls_verify: bool) -> Result<RouteRequest> {
     let (host, target) = text
         .split_once('=')
         .ok_or_else(|| Error::Invalid(format!("invalid route {text:?}: use app.example.com=3000")))?;
-    Ok(RouteRequest { hostname: host.to_string(), service: target.to_string() })
+    Ok(RouteRequest { hostname: host.to_string(), service: target.to_string(), no_tls_verify })
 }
 
 fn quiet(_: &StepReport) {}
@@ -361,7 +367,7 @@ fn setup(keeper: &mut Keeper, args: SetupArgs, json: bool) -> Result<u8> {
         let outcome = keeper.resume(&run_id, &[], &mut show);
         return finish_setup(keeper, outcome, json);
     }
-    let routes = args.routes.iter().map(|r| parse_route(r)).collect::<Result<Vec<_>>>()?;
+    let routes = args.routes.iter().map(|r| parse_route(r, args.no_tls_verify)).collect::<Result<Vec<_>>>()?;
     let install_service = !args.no_service;
     if install_service {
         offer_cloudflared(keeper)?;
@@ -452,11 +458,11 @@ fn run(cli: Cli) -> Result<u8> {
             }
         },
         Command::Route { command } => match command {
-            RouteCommand::Add { hostname, target, tunnel } => {
+            RouteCommand::Add { hostname, target, tunnel, no_tls_verify } => {
                 let tunnel = keeper.config().resolve_tunnel(tunnel.as_deref())?.name.clone();
                 let request = SetupRequest {
                     tunnel,
-                    routes: vec![RouteRequest { hostname, service: target }],
+                    routes: vec![RouteRequest { hostname, service: target, no_tls_verify }],
                     install_service: false,
                     zone: None,
                     replace_dns: vec![],

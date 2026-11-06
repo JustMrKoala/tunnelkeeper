@@ -44,6 +44,7 @@
           <label>Tunnel name <input name="tunnel" required pattern="[a-z0-9][a-z0-9\-]*" placeholder="web" autocomplete="off"></label>
           <label>Public hostname <input name="hostname" required placeholder="app.example.com" autocomplete="off"></label>
           <label>Local port or URL <input name="target" required placeholder="3000" autocomplete="off"></label>
+          <label class="check"><input type="checkbox" name="insecure"> Local app uses HTTPS with a self signed certificate</label>
           <label class="check"><input type="checkbox" name="service" checked> Install as a system service, which asks for administrator rights</label>
           <div><button type="submit" class="primary">Set up</button></div>
         </form>
@@ -112,6 +113,7 @@
     <form id="route-form" class="stack">
       <label>Public hostname <input name="hostname" required placeholder="api.example.com" autocomplete="off"></label>
       <label>Local port or URL <input name="target" required placeholder="8080" autocomplete="off"></label>
+      <label class="check"><input type="checkbox" name="insecure"> Local app uses HTTPS with a self signed certificate</label>
       <div class="row end">
         <button type="button" id="route-cancel">Cancel</button>
         <button type="submit" class="primary">Add route</button>

@@ -293,7 +293,7 @@ $("route-form").addEventListener("submit", (e) => {
   e.preventDefault();
   const f = new FormData(e.target);
   $("route-dialog").close();
-  runJob("/api/route", { tunnel: routeTunnel, hostname: f.get("hostname"), target: f.get("target") });
+  runJob("/api/route", { tunnel: routeTunnel, hostname: f.get("hostname"), target: f.get("target"), no_tls_verify: f.get("insecure") === "on" });
 });
 
 $("setup-form").addEventListener("submit", (e) => {
@@ -301,7 +301,7 @@ $("setup-form").addEventListener("submit", (e) => {
   const f = new FormData(e.target);
   runJob("/api/setup", {
     tunnel: f.get("tunnel"),
-    routes: [{ hostname: f.get("hostname"), service: f.get("target") }],
+    routes: [{ hostname: f.get("hostname"), service: f.get("target"), no_tls_verify: f.get("insecure") === "on" }],
     install_service: f.get("service") === "on",
     zone: null,
     replace_dns: [],

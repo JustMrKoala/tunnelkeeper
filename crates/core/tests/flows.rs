@@ -87,7 +87,7 @@ fn env() -> Env {
 fn request() -> SetupRequest {
     SetupRequest {
         tunnel: "web".into(),
-        routes: vec![RouteRequest { hostname: HOST.into(), service: "3000".into() }],
+        routes: vec![RouteRequest { hostname: HOST.into(), service: "3000".into(), no_tls_verify: false }],
         install_service: true,
         zone: None,
         replace_dns: vec![],
@@ -578,6 +578,32 @@ fn changing_a_port_updates_the_rule_and_rollback_restores_it() {
 }
 
 #[test]
+fn self_signed_origin_option_is_set_and_rerun_is_idempotent() {
+    let mut e = env();
+    let mut r = request();
+    r.routes[0].service = "https://localhost:8443".into();
+    r.routes[0].no_tls_verify = true;
+    e.keeper.reconcile(r.clone(), &mut |_| {}).unwrap();
+    let id = e.fake.tunnels()[0]["id"].as_str().unwrap().to_string();
+    assert_eq!(e.fake.ingress(&id)[0]["originRequest"]["noTLSVerify"], true);
+    let writes = e.fake.mutation_count();
+    assert!(!e.keeper.reconcile(r, &mut |_| {}).unwrap().changed);
+    assert_eq!(e.fake.mutation_count(), writes);
+}
+
+#[test]
+fn turning_on_the_option_for_an_existing_route_updates_it() {
+    let mut e = env();
+    let mut r = request();
+    r.routes[0].service = "https://localhost:8443".into();
+    e.keeper.reconcile(r.clone(), &mut |_| {}).unwrap();
+    r.routes[0].no_tls_verify = true;
+    assert!(e.keeper.reconcile(r, &mut |_| {}).unwrap().changed);
+    let id = e.fake.tunnels()[0]["id"].as_str().unwrap().to_string();
+    assert_eq!(e.fake.ingress(&id)[0]["originRequest"]["noTLSVerify"], true);
+}
+
+#[test]
 fn hostname_in_another_zone_uses_that_zone() {
     let mut e = env();
     let other = e.fake.add_zone("dev.example.com");
@@ -601,7 +627,7 @@ fn deep_hostname_gets_a_certificate_warning() {
 fn bad_input_is_refused_before_any_network_write() {
     for (name, host, target) in [("Bad Name", HOST, "3000"), ("web", "nodots", "3000"), ("web", HOST, "not a target")] {
         let mut e = env();
-        let r = SetupRequest { tunnel: name.into(), routes: vec![RouteRequest { hostname: host.into(), service: target.into() }], install_service: false, zone: None, replace_dns: vec![] };
+        let r = SetupRequest { tunnel: name.into(), routes: vec![RouteRequest { hostname: host.into(), service: target.into(), no_tls_verify: false }], install_service: false, zone: None, replace_dns: vec![] };
         assert!(e.keeper.reconcile(r, &mut |_| {}).is_err());
         assert_eq!(e.fake.mutation_count(), 0);
     }
