@@ -424,6 +424,26 @@ fn account_owned_token_works() {
 }
 
 #[test]
+fn login_removes_stray_whitespace_from_a_paste() {
+    let e = env();
+    for pasted in [format!("{API_TOKEN} "), format!(" {API_TOKEN}\r\n"), format!("\t{API_TOKEN}\n")] {
+        assert_eq!(e.keeper.auth_login(Secret::new(pasted), None).unwrap().token_status, "active");
+    }
+}
+
+#[test]
+fn bad_pastes_are_refused_clearly_and_not_echoed() {
+    let e = env();
+    let calls = e.fake.calls().len();
+    for (pasted, words) in [("   ", "empty"), ("two parts-private", "spaces"), ("caf\u{e9}-private", "spaces")] {
+        let error = e.keeper.auth_login(Secret::new(pasted), None).unwrap_err().to_string();
+        assert!(error.contains(words), "{error}");
+        assert!(!error.contains("private"), "{error}");
+    }
+    assert_eq!(e.fake.calls().len(), calls, "a bad paste is never sent to Cloudflare");
+}
+
+#[test]
 fn login_only_stores_active_tokens() {
     let e = env();
     e.fake.add_token("dead", ALL_PERMS);

@@ -90,6 +90,19 @@ pub fn format_log_line(line: &str) -> String {
     out
 }
 
+/// Terminal pastes often bring a stray space or line break. Those are removed.
+/// Anything else that cannot be in a token is refused without echoing it.
+pub fn clean_token(token: &Secret) -> Result<Secret> {
+    let trimmed = token.expose().trim();
+    if trimmed.is_empty() {
+        return Err(Error::Invalid("the token is empty. Nothing was pasted, so try again".into()));
+    }
+    if !trimmed.chars().all(|c| c.is_ascii_graphic()) {
+        return Err(Error::Invalid("the token contains spaces or characters a token cannot have. Copy it again and paste it".into()));
+    }
+    Ok(Secret::new(trimmed))
+}
+
 #[derive(Serialize, Debug, Clone, PartialEq)]
 pub struct AuthReport {
     pub token_status: String,
@@ -130,7 +143,7 @@ impl Keeper {
             locate: cloudflared::locate,
             api_base: loopback_override("TUNNELKEEPER_API_BASE").unwrap_or_else(|| cloudflare::API_BASE.to_string()),
             release_base: loopback_override("TUNNELKEEPER_RELEASE_BASE").unwrap_or_else(|| cloudflared::RELEASE_BASE.to_string()),
-            env_token: std::env::var("CLOUDFLARE_API_TOKEN").ok().filter(|t| !t.is_empty()).map(Secret::new),
+            env_token: std::env::var("CLOUDFLARE_API_TOKEN").ok().map(|t| t.trim().to_string()).filter(|t| !t.is_empty()).map(Secret::new),
             verify_timeout: Duration::from_secs(30),
             poll_interval: Duration::from_secs(1),
             delete_attempts: 8,
@@ -193,11 +206,14 @@ impl Keeper {
 
     /// Verifies a token and only stores it if it is active.
     pub fn auth_login(&self, token: Secret, zone: Option<&str>) -> Result<AuthReport> {
-        if token.is_empty() {
-            return Err(Error::Invalid("the token is empty".into()));
-        }
+        let token = clean_token(&token)?;
         let client = Client::new(&self.d.api_base, token.clone());
-        let (token_status, permissions) = self.permission_report(&client, zone)?;
+        let (token_status, permissions) = self.permission_report(&client, zone).map_err(|e| match e {
+            Error::Api { code: Some(6003), .. } => {
+                Error::Auth("Cloudflare says this is not a valid token. Check you copied the whole token, then paste it again".into())
+            }
+            other => other,
+        })?;
         if token_status != "active" {
             return Err(Error::Auth(format!("the token is {token_status}, so it was not stored")));
         }

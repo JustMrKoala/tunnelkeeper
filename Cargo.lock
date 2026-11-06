@@ -190,7 +190,7 @@ checksum = "00d174d5400e5e8fd687ad1049e2f578285fa914201b1af7e8b112a4546bd826"
 
 [[package]]
 name = "fake-cloudflare"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "serde_json",
  "sha2",
@@ -565,7 +565,7 @@ checksum = "009dbb7700f11c55ef83aebbe4c0e9cf1f1ac0844bd8d6f00dc38f302026e13a"
 
 [[package]]
 name = "tunnelkeeper"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "clap",
  "fake-cloudflare",
@@ -578,7 +578,7 @@ dependencies = [
 
 [[package]]
 name = "tunnelkeeper-core"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "fake-cloudflare",
  "getrandom 0.4.3",
