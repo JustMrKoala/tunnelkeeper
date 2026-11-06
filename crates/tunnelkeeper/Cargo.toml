@@ -1,0 +1,15 @@
+[package]
+name = "tunnelkeeper"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tunnelkeeper-core = { path = "../core" }
+clap = { version = "4", features = ["derive"] }
+rpassword = "7"
+tiny_http = "0.12"
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+fake-cloudflare = { path = "../fake-cloudflare" }

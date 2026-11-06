@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="tk-csrf" content="__CSRF__">
+  <title>tunnelkeeper</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>tunnelkeeper</h1>
+    <nav id="tabs" aria-label="Sections">
+      <button data-tab="overview" aria-current="page">Tunnels</button>
+      <button data-tab="setup">New tunnel</button>
+      <button data-tab="logs">Logs</button>
+      <button data-tab="doctor">Doctor</button>
+      <button data-tab="history">History</button>
+      <button data-tab="account">Account</button>
+    </nav>
+  </header>
+
+  <main>
+    <div id="banner" class="banner" hidden></div>
+    <section id="job" class="panel" hidden aria-live="polite"></section>
+
+    <section data-panel="overview">
+      <div id="tunnels"></div>
+      <div class="panel">
+        <h2>All tunnels on Cloudflare</h2>
+        <form id="remote-form" class="row">
+          <label>Zone <input name="zone" placeholder="example.com" autocomplete="off"></label>
+          <button type="submit">List</button>
+        </form>
+        <div id="remote"></div>
+      </div>
+    </section>
+
+    <section data-panel="setup" hidden>
+      <div class="panel">
+        <h2>Set up a tunnel</h2>
+        <p class="muted">Safe to run again. Anything already correct is left alone.</p>
+        <form id="setup-form" class="stack">
+          <label>Tunnel name <input name="tunnel" required pattern="[a-z0-9][a-z0-9\-]*" placeholder="web" autocomplete="off"></label>
+          <label>Public hostname <input name="hostname" required placeholder="app.example.com" autocomplete="off"></label>
+          <label>Local port or URL <input name="target" required placeholder="3000" autocomplete="off"></label>
+          <label class="check"><input type="checkbox" name="service" checked> Install as a system service, which asks for administrator rights</label>
+          <div><button type="submit" class="primary">Set up</button></div>
+        </form>
+      </div>
+    </section>
+
+    <section data-panel="logs" hidden>
+      <div class="panel">
+        <div class="row">
+          <h2>Recent logs</h2>
+          <label>Tunnel <select id="log-tunnel"></select></label>
+          <button id="log-refresh">Refresh</button>
+        </div>
+        <pre id="log-output" class="log" tabindex="0"></pre>
+      </div>
+    </section>
+
+    <section data-panel="doctor" hidden>
+      <div class="panel">
+        <div class="row"><h2>Doctor</h2><button id="doctor-run" class="primary">Run checks</button></div>
+        <ul id="doctor-output" class="findings"></ul>
+      </div>
+    </section>
+
+    <section data-panel="history" hidden>
+      <div class="panel">
+        <h2>Setup runs</h2>
+        <div id="runs"></div>
+      </div>
+    </section>
+
+    <section data-panel="account" hidden>
+      <div class="panel">
+        <h2>Cloudflare API token</h2>
+        <p id="token-state" class="muted"></p>
+        <form id="login-form" class="stack">
+          <label>API token <input name="token" type="password" required autocomplete="off"></label>
+          <label>Zone, to check permissions <input name="zone" placeholder="example.com" autocomplete="off"></label>
+          <div><button type="submit" class="primary">Verify and store</button> <button type="button" id="logout">Delete stored token</button></div>
+        </form>
+        <ul id="login-output" class="findings"></ul>
+      </div>
+      <div class="panel">
+        <h2>cloudflared</h2>
+        <p id="cf-state" class="muted"></p>
+        <button id="cf-install">Download official release</button>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="confirm">
+    <h2 id="confirm-title"></h2>
+    <ol id="confirm-actions"></ol>
+    <ul id="confirm-notes" class="notes"></ul>
+    <label>Type <code id="confirm-phrase"></code> to confirm
+      <input id="confirm-input" autocomplete="off">
+    </label>
+    <div class="row end">
+      <button id="confirm-cancel">Cancel</button>
+      <button id="confirm-go" class="danger" disabled>Confirm</button>
+    </div>
+  </dialog>
+
+  <dialog id="route-dialog">
+    <h2>Add route to <span id="route-tunnel"></span></h2>
+    <form id="route-form" class="stack">
+      <label>Public hostname <input name="hostname" required placeholder="api.example.com" autocomplete="off"></label>
+      <label>Local port or URL <input name="target" required placeholder="8080" autocomplete="off"></label>
+      <div class="row end">
+        <button type="button" id="route-cancel">Cancel</button>
+        <button type="submit" class="primary">Add route</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/app.js"></script>
+</body>
+</html>
